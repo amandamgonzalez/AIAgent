@@ -4,6 +4,7 @@ using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Newtonsoft.Json.Schema.Generation;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
+using System.Threading.Tasks.Dataflow;
 
 
 // the order goes process_file -> create_chat_history -> extract_pii -> generate_pii_schema
@@ -46,6 +47,9 @@ namespace Plugin
         [Description("Extracts PII from the provided chat history.")]
         public async Task<string> ExtractPIIAsync(ChatHistory chatHistory, Kernel kernel)
         {
+            Console.WriteLine("Extracting PII...");
+            Console.WriteLine($"Kernel type: {kernel.GetType().FullName}");
+
             var jsonSchema = GeneratePIISchema();
 
             var chatUpdates = kernel.GetRequiredService<IChatCompletionService>()

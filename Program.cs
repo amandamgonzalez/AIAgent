@@ -11,7 +11,7 @@ using Azure.Core.Diagnostics;
 
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 
-using Plugin;
+using PluginNew;
 
 
 using Microsoft.SemanticKernel.Agents.AzureAI;
@@ -24,13 +24,10 @@ namespace AgentsSample
     {
         public static async Task Main()
         {
-            // Enable Azure SDK logging
-            // AzureEventSourceListener listener = AzureEventSourceListener.CreateConsoleLogger();
-
             // load configuration
             Settings settings = new();
 
-            KernelPlugin plugin = KernelPluginFactory.CreateFromType<PIIExtractionPlugin>();
+            KernelPlugin plugin = KernelPluginFactory.CreateFromType<AzurePIIExtractionPlugin>();
             PersistentAgentsClient client = AzureAIAgent.CreateAgentsClient(settings.AzureAIAgent.Endpoint, new AzureCliCredential());
 
             // Debugging: Print the ChatModel value to ensure it is not null or empty
@@ -42,16 +39,13 @@ namespace AgentsSample
                 name: "PIIAgent",
                 description: " Extract any Personally Identifiable Information (PII) from files",
                 instructions: $" You are an agent designed to extract any Personally Identifiable Information (PII) in files you receive.\n" +
-                "If the user provides a file path, process the file and extract PII.");
+                "If the user provides a file path, process the file by calling the Plugin to extract PII.");
 
             AzureAIAgent agent = new(
                 definition,
                 client,
                 plugins: [plugin]);
             // you can add mopre stuff here, such as new KernelPromptTemplateFactory()
-                
-            // leaving this here for later because I feel like I'm going to have to create a thread
-            // AgentThread thread = new AzureAIAgentThread(client);
 
             // main loop
             bool isComplete = false;
@@ -73,7 +67,6 @@ namespace AgentsSample
                 }
 
                 AzureAIAgentThread agentThread = new(agent.Client);
-                // what's the difference between starting here or before the main loop?
                 try
                 {
                     ChatMessageContent message = new(AuthorRole.User, input);
