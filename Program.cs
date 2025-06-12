@@ -11,7 +11,7 @@ using Azure.Core.Diagnostics;
 
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 
-using PluginNew;
+using Plugin;
 
 
 using Microsoft.SemanticKernel.Agents.AzureAI;
@@ -27,7 +27,7 @@ namespace AgentsSample
             // load configuration
             Settings settings = new();
 
-            KernelPlugin plugin = KernelPluginFactory.CreateFromType<AzurePIIExtractionPlugin>();
+            KernelPlugin plugin = KernelPluginFactory.CreateFromType<PIIExtractionPlugin>();
             PersistentAgentsClient client = AzureAIAgent.CreateAgentsClient(settings.AzureAIAgent.Endpoint, new AzureCliCredential());
 
             // Debugging: Print the ChatModel value to ensure it is not null or empty
