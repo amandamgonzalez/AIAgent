@@ -7,8 +7,6 @@ using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
 using Azure.Core.Diagnostics;
-
-
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 
 using Plugin;
@@ -27,61 +25,60 @@ namespace AgentsSample
             // load configuration
             Settings settings = new();
 
-            KernelPlugin plugin = KernelPluginFactory.CreateFromType<PIIExtractionPlugin>();
             PersistentAgentsClient client = AzureAIAgent.CreateAgentsClient(settings.AzureAIAgent.Endpoint, new AzureCliCredential());
 
-            // Debugging: Print the ChatModel value to ensure it is not null or empty
-            // Console.WriteLine($"Debug: ChatModel = '{settings.AzureAIAgent.ChatModel}'");
-            // had to troubleshoot an error "model" required, because I missed an s when setting the ChatModel in user secrets
+            AzureAIAgentThread thread = new(client);
 
-            PersistentAgent definition = await client.Administration.CreateAgentAsync(
-                settings.AzureAIAgent.ChatModel,
-                name: "PIIAgent",
-                description: " Extract any Personally Identifiable Information (PII) from files",
-                instructions: $" You are an agent designed to extract any Personally Identifiable Information (PII) in files you receive.\n" +
-                "If the user provides a file path, process the file by calling the Plugin to extract PII.");
+            // local function to create a message with an image reference
+            ChatMessageContent CreateMessageWithImageReference(string input, string fileId)
+                => new(AuthorRole.User, [new TextContent(input), new FileReferenceContent(fileId)]);
 
-            AzureAIAgent agent = new(
-                definition,
-                client,
-                plugins: [plugin]);
-            // you can add mopre stuff here, such as new KernelPromptTemplateFactory()
-
-            // main loop
-            bool isComplete = false;
-            do
+            try
             {
-                Console.WriteLine();
-                Console.Write("> ");
-                string? input = Console.ReadLine();
-
-                if (string.IsNullOrWhiteSpace(input))
+                // i am hard coding 
+                using (FileStream imageStream = new FileStream(@"C:\Users\t-amandag\PII\PIIAgentAgain\images\Screenshot 2025-06-05 095614.png", FileMode.Open, FileAccess.Read))
                 {
-                    continue;
-                }
+                    // upload the image and get the file id
+                    PersistentAgentFileInfo fileInfo = await client.Files.UploadFileAsync(imageStream, PersistentAgentFilePurpose.Agents, "Screenshot 2025-06-05 095614.png");
 
-                if (input.Trim().Equals("EXIT", StringComparison.OrdinalIgnoreCase))
-                {
-                    isComplete = true;
-                    break;
-                }
+                    // create a message with the image reference
+                    ChatMessageContent imageMessage = CreateMessageWithImageReference("Extract any Personally Identifiable Information (PII) from image.", fileInfo.Id);
 
-                AzureAIAgentThread agentThread = new(agent.Client);
-                try
-                {
-                    ChatMessageContent message = new(AuthorRole.User, input);
-                    await foreach (ChatMessageContent response in agent.InvokeAsync(message, agentThread))
+                    PersistentAgent definition = await client.Administration.CreateAgentAsync(
+                        settings.AzureAIAgent.ChatModel,
+                        name: "PIIAgent",
+                        description: "Extract any Personally Identifiable Information (PII) from files",
+                        instructions: $"You are an agent designed to extract any Personally Identifiable Information (PII) in files you receive.\n" +
+                        "If the user provides a file path, process the file by calling the Plugin to extract PII.");
+
+                    AzureAIAgent agent = new(
+                        definition,
+                        client);
+
+                    // invoke the agent
+                    await foreach (ChatMessageContent response in agent.InvokeAsync(imageMessage, thread))
                     {
                         Console.WriteLine(response.Content);
                     }
                 }
-                finally
+            }
+            catch (System.Text.Json.JsonException ex)
+            {
+                Console.WriteLine($"JSON Exception: {ex.Message}");
+                Console.WriteLine("Ensure the JSON data is complete and correctly formatted.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Unhandled Exception: {ex.Message}");
+            }
+            finally
+            {
+                if (thread != null)
                 {
-                    await agentThread.DeleteAsync();
+                    await thread.DeleteAsync();
                 }
-            } while (!isComplete);
-
-            Console.WriteLine("Goodbye!");
+                Console.WriteLine("File scanning completed.");
+            }
         }
     }
 }
