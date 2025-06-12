@@ -8,22 +8,21 @@ public class Settings
     private readonly IConfigurationRoot configRoot;
 
     private AzureOpenAISettings azureOpenAI;
-    private OpenAISettings openAI;
+    private AzureAIAgentSettings? azureAIAgent;
 
     public AzureOpenAISettings AzureOpenAI => this.azureOpenAI ??= this.GetSettings<Settings.AzureOpenAISettings>();
-    public OpenAISettings OpenAI => this.openAI ??= this.GetSettings<Settings.OpenAISettings>();
+    public AzureAIAgentSettings AzureAIAgent => this.azureAIAgent ??= this.GetSettings<Settings.AzureAIAgentSettings>();
 
-    public class OpenAISettings
+    public class AzureAIAgentSettings
     {
         public string ChatModel { get; set; } = string.Empty;
-        // public string ApiKey { get; set; } = string.Empty;
+        public string Endpoint { get; set; } = string.Empty;
     }
 
     public class AzureOpenAISettings
     {
         public string ChatModelDeployment { get; set; } = string.Empty;
         public string Endpoint { get; set; } = string.Empty;
-        // public string ApiKey { get; set; } = string.Empty;
     }
 
     public TSettings GetSettings<TSettings>() =>
