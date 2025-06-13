@@ -7,7 +7,7 @@ public class Settings
 {
     private readonly IConfigurationRoot configRoot;
 
-    private AzureOpenAISettings azureOpenAI;
+    private AzureOpenAISettings? azureOpenAI;
     private AzureAIAgentSettings? azureAIAgent;
 
     public AzureOpenAISettings AzureOpenAI => this.azureOpenAI ??= this.GetSettings<Settings.AzureOpenAISettings>();
