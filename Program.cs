@@ -10,6 +10,8 @@ using Azure.Core.Diagnostics;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using System.Text.Json.Serialization;
 using System.Text.Json;
+using Newtonsoft.Json.Schema;
+using Newtonsoft.Json.Schema.Generation;
 
 using Microsoft.SemanticKernel.Agents.AzureAI;
 using Azure.AI.Agents.Persistent; // dotnet add package Microsoft.SemanticKernel.Agents.AzureAI --prerelease
@@ -83,8 +85,33 @@ namespace AgentsSample
                         settings.AzureAIAgent.ChatModel,
                         name: "PIIAgent",
                         description: "Extract any Personally Identifiable Information (PII) from files",
-                        instructions: $"You are an agent designed to extract any Personally Identifiable Information (PII) in files you receive.\n" +
-                        "If the user provides a file path, process the file by calling the Plugin to extract PII.");
+                        responseFormat: BinaryData.FromString(
+                            """
+                            {
+                                "type": "json_schema",
+                                "json_schema": {
+                                    "type": "object",
+                                    "name": "PIIExtraction",
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "name": { "type": "string" },
+                                            "company_email": { "type": "string" },
+                                            "personal_email": { "type": "string" },
+                                            "personal_phone_number": { "type": "string" },
+                                            "company_phone_number": { "type": "string" },
+                                            "personal_address": { "type": "string" },
+                                            "company_ship_to_address": { "type": "string" },
+                                            "company_ship_from_address": { "type": "string" }
+                                        },
+                                        "required": [ "name", "company_email", "personal_email", "personal_phone_number", "company_phone_number", "personal_address", "company_ship_to_address", "company_ship_from_address" ],
+                                        "additionalProperties": false
+                                    },
+                                    "strict": true
+                                }
+                            }
+                            """
+                        ));
 
                     AzureAIAgent agent = new(
                         definition,
@@ -94,8 +121,8 @@ namespace AgentsSample
                     Console.WriteLine("Structured Output:");
                     await foreach (ChatMessageContent response in agent.InvokeAsync(imageMessage, thread))
                     {
-                        // Log raw response content for debugging
-                        Console.WriteLine($"Raw Response Content: {response.Content}");
+                        // raw response content for debugging
+                        // Console.WriteLine($"Raw Response Content: {response.Content}");
 
                         try
                         {
@@ -128,7 +155,7 @@ namespace AgentsSample
             }
             finally
             {
-                if (thread != null)
+                if (thread != null && thread.Id != null)
                 {
                     await thread.DeleteAsync();
                 }
