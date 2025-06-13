@@ -11,7 +11,6 @@ using Microsoft.SemanticKernel.Connectors.OpenAI;
 
 using Plugin;
 
-
 using Microsoft.SemanticKernel.Agents.AzureAI;
 using Azure.AI.Agents.Persistent; // dotnet add package Microsoft.SemanticKernel.Agents.AzureAI --prerelease
 
@@ -35,13 +34,21 @@ namespace AgentsSample
 
             try
             {
-                // i am hard coding 
-                using (FileStream imageStream = new FileStream(@"C:\Users\t-amandag\PII\PIIAgentAgain\images\Screenshot 2025-06-05 095614.png", FileMode.Open, FileAccess.Read))
+                Console.WriteLine("Please enter the file path:");
+                string? filePath = Console.ReadLine();
+
+                if (!File.Exists(filePath))
+                {
+                    Console.WriteLine("File does not exist. Please provide a valid file path.");
+                    return;
+                }
+
+                using (FileStream imageStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
                 {
                     // upload the image and get the file id
-                    PersistentAgentFileInfo fileInfo = await client.Files.UploadFileAsync(imageStream, PersistentAgentFilePurpose.Agents, "Screenshot 2025-06-05 095614.png");
+                    PersistentAgentFileInfo fileInfo = await client.Files.UploadFileAsync(imageStream, PersistentAgentFilePurpose.Agents, Path.GetFileName(filePath));
 
-                    // create a message with the image reference
+                    // create a message with the image reference 
                     ChatMessageContent imageMessage = CreateMessageWithImageReference("Extract any Personally Identifiable Information (PII) from image.", fileInfo.Id);
 
                     PersistentAgent definition = await client.Administration.CreateAgentAsync(
@@ -56,12 +63,14 @@ namespace AgentsSample
                         client);
 
                     // invoke the agent
+                    Console.WriteLine("Structured Output:");
                     await foreach (ChatMessageContent response in agent.InvokeAsync(imageMessage, thread))
                     {
-                        Console.WriteLine(response.Content);
+                        Console.WriteLine($"Response: {response.Content}");
                     }
                 }
             }
+
             catch (System.Text.Json.JsonException ex)
             {
                 Console.WriteLine($"JSON Exception: {ex.Message}");
