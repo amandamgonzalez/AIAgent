@@ -8,8 +8,8 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
 using Azure.Core.Diagnostics;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
-
-using Plugin;
+using System.Text.Json.Serialization;
+using System.Text.Json;
 
 using Microsoft.SemanticKernel.Agents.AzureAI;
 using Azure.AI.Agents.Persistent; // dotnet add package Microsoft.SemanticKernel.Agents.AzureAI --prerelease
@@ -17,6 +17,34 @@ using Azure.AI.Agents.Persistent; // dotnet add package Microsoft.SemanticKernel
 
 namespace AgentsSample
 {
+    // structured output for PII extraction
+    public class PII
+    {
+        [JsonPropertyName("name")]
+        public string? Name { get; set; }
+
+        [JsonPropertyName("company_email")]
+        public string? CompanyEmail { get; set; }
+
+        [JsonPropertyName("personal_email")]
+        public string? PersonalEmail { get; set; }
+
+        [JsonPropertyName("personal_phone_number")]
+        public string? PersonalPhoneNumber { get; set; }
+
+        [JsonPropertyName("company_phone_number")]
+        public string? CompanyPhoneNumber { get; set; }
+
+        [JsonPropertyName("personal_address")]
+        public string? PersonalAddress { get; set; }
+
+        [JsonPropertyName("company_ship_to_address")]
+        public string? CompanyShipToAddress { get; set; }
+
+        [JsonPropertyName("company_ship_from_address")]
+        public string? CompanyShipFromAddress { get; set; }
+    }
+
     public static class Program
     {
         public static async Task Main()
@@ -66,7 +94,25 @@ namespace AgentsSample
                     Console.WriteLine("Structured Output:");
                     await foreach (ChatMessageContent response in agent.InvokeAsync(imageMessage, thread))
                     {
-                        Console.WriteLine($"Response: {response.Content}");
+                        // Log raw response content for debugging
+                        Console.WriteLine($"Raw Response Content: {response.Content}");
+
+                        try
+                        {
+                            if (!string.IsNullOrEmpty(response.Content))
+                            {
+                                PII? extractedPII = JsonSerializer.Deserialize<PII>(response.Content);
+                                Console.WriteLine(JsonSerializer.Serialize(extractedPII, new JsonSerializerOptions { WriteIndented = true }));
+                            }
+                            else
+                            {
+                                Console.WriteLine("Response content is null or empty.");
+                            }
+                        }
+                        catch (JsonException)
+                        {
+                            Console.WriteLine("Failed to parse structured output.");
+                        }
                     }
                 }
             }
