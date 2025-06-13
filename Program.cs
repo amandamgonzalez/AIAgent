@@ -1,52 +1,24 @@
-﻿using System;
-using System.IO;
-using System.Threading.Tasks;
+﻿// using System;
+// using System.IO;
+// using System.Threading.Tasks;
+// using Microsoft.SemanticKernel.Agents;
+// using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
+// using Azure.Core.Diagnostics;
+// using Microsoft.SemanticKernel.Connectors.OpenAI;
+// using System.Text.Json.Serialization;
+// using System.Text.Json;
+// using Newtonsoft.Json.Schema;
+// using Newtonsoft.Json.Schema.Generation;
+
 using Azure.Identity;
 using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.ChatCompletion;
-using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
-using Azure.Core.Diagnostics;
-using Microsoft.SemanticKernel.Connectors.OpenAI;
-using System.Text.Json.Serialization;
-using System.Text.Json;
-using Newtonsoft.Json.Schema;
-using Newtonsoft.Json.Schema.Generation;
-
 using Microsoft.SemanticKernel.Agents.AzureAI;
 using Azure.AI.Agents.Persistent; // dotnet add package Microsoft.SemanticKernel.Agents.AzureAI --prerelease
 
 
-namespace AgentsSample
+namespace AzureAIAgentSample
 {
-    // structured output for PII extraction
-    public class PII
-    {
-        [JsonPropertyName("name")]
-        public string? Name { get; set; }
-
-        [JsonPropertyName("company_email")]
-        public string? CompanyEmail { get; set; }
-
-        [JsonPropertyName("personal_email")]
-        public string? PersonalEmail { get; set; }
-
-        [JsonPropertyName("personal_phone_number")]
-        public string? PersonalPhoneNumber { get; set; }
-
-        [JsonPropertyName("company_phone_number")]
-        public string? CompanyPhoneNumber { get; set; }
-
-        [JsonPropertyName("personal_address")]
-        public string? PersonalAddress { get; set; }
-
-        [JsonPropertyName("company_ship_to_address")]
-        public string? CompanyShipToAddress { get; set; }
-
-        [JsonPropertyName("company_ship_from_address")]
-        public string? CompanyShipFromAddress { get; set; }
-    }
-
     public static class Program
     {
         public static async Task Main()
@@ -54,9 +26,50 @@ namespace AgentsSample
             // load configuration
             Settings settings = new();
 
+            //create a client to interact with Azure AI Agent
             PersistentAgentsClient client = AzureAIAgent.CreateAgentsClient(settings.AzureAIAgent.Endpoint, new AzureCliCredential());
 
+            // create a thread to hold the conversation
             AzureAIAgentThread thread = new(client);
+
+            // create the agent with a structured output format
+            PersistentAgent definition = await client.Administration.CreateAgentAsync(
+                settings.AzureAIAgent.ChatModel,
+                name: "PIIAgent",
+                description: "Extract any Personally Identifiable Information (PII) from files",
+                responseFormat: BinaryData.FromString(
+                    """
+                    {
+                    "type": "json_schema",
+                    "json_schema": {
+                    "type": "object",
+                    "name": "PIIExtraction",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "name": { "type": "string" },
+                            "company_email": { "type": "string" },
+                            "personal_email": { "type": "string" },
+                            "personal_phone_number": { "type": "string" },
+                            "company_phone_number": { "type": "string" },
+                            "personal_address": { "type": "string" },
+                            "company_ship_to_address": { "type": "string" },
+                            "company_ship_from_address": { "type": "string" }
+                            },
+                        "required": [ "name", "company_email", "personal_email", "personal_phone_number", "company_phone_number", 
+                                    "personal_address", "company_ship_to_address", "company_ship_from_address" ],
+                        "additionalProperties": false
+                                    },
+                        "strict": true
+                        }
+                    }
+                    """
+                    ));
+
+            // create the agent with the definition
+            AzureAIAgent agent = new(
+                definition,
+                client);
 
             // local function to create a message with an image reference
             ChatMessageContent CreateMessageWithImageReference(string input, string fileId)
@@ -64,6 +77,7 @@ namespace AgentsSample
 
             try
             {
+                // prompt the user for a file path
                 Console.WriteLine("Please enter the file path:");
                 string? filePath = Console.ReadLine();
 
@@ -81,64 +95,24 @@ namespace AgentsSample
                     // create a message with the image reference 
                     ChatMessageContent imageMessage = CreateMessageWithImageReference("Extract any Personally Identifiable Information (PII) from image.", fileInfo.Id);
 
-                    PersistentAgent definition = await client.Administration.CreateAgentAsync(
-                        settings.AzureAIAgent.ChatModel,
-                        name: "PIIAgent",
-                        description: "Extract any Personally Identifiable Information (PII) from files",
-                        responseFormat: BinaryData.FromString(
-                            """
-                            {
-                                "type": "json_schema",
-                                "json_schema": {
-                                    "type": "object",
-                                    "name": "PIIExtraction",
-                                    "schema": {
-                                        "type": "object",
-                                        "properties": {
-                                            "name": { "type": "string" },
-                                            "company_email": { "type": "string" },
-                                            "personal_email": { "type": "string" },
-                                            "personal_phone_number": { "type": "string" },
-                                            "company_phone_number": { "type": "string" },
-                                            "personal_address": { "type": "string" },
-                                            "company_ship_to_address": { "type": "string" },
-                                            "company_ship_from_address": { "type": "string" }
-                                        },
-                                        "required": [ "name", "company_email", "personal_email", "personal_phone_number", "company_phone_number", "personal_address", "company_ship_to_address", "company_ship_from_address" ],
-                                        "additionalProperties": false
-                                    },
-                                    "strict": true
-                                }
-                            }
-                            """
-                        ));
-
-                    AzureAIAgent agent = new(
-                        definition,
-                        client);
-
                     // invoke the agent
                     Console.WriteLine("Structured Output:");
                     await foreach (ChatMessageContent response in agent.InvokeAsync(imageMessage, thread))
                     {
-                        // raw response content for debugging
-                        // Console.WriteLine($"Raw Response Content: {response.Content}");
-
                         try
                         {
                             if (!string.IsNullOrEmpty(response.Content))
                             {
-                                PII? extractedPII = JsonSerializer.Deserialize<PII>(response.Content);
-                                Console.WriteLine(JsonSerializer.Serialize(extractedPII, new JsonSerializerOptions { WriteIndented = true }));
+                                Console.WriteLine(response.Content);
                             }
                             else
                             {
                                 Console.WriteLine("Response content is null or empty.");
                             }
                         }
-                        catch (JsonException)
+                        catch (Exception ex)
                         {
-                            Console.WriteLine("Failed to parse structured output.");
+                            Console.WriteLine($"Failed to process structured output: {ex.Message}");
                         }
                     }
                 }

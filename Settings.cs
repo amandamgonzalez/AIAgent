@@ -1,7 +1,7 @@
 using System.Reflection;
 using Microsoft.Extensions.Configuration;
 
-namespace AgentsSample;
+namespace AzureAIAgentSample;
 
 public class Settings
 {
