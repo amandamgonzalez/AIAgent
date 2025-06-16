@@ -52,7 +52,7 @@ namespace Plugin
             // var jsonSchema = GeneratePIISchema();
 
             // Console.WriteLine("Generated JSON schema: " + jsonSchema);
-            // Console.WriteLine("Got to ExtractPIIAsync");
+            Console.WriteLine("Got to ExtractPIIAsync");
 
             var chatCompletionService = _kernel.GetRequiredService<IChatCompletionService>();
 
@@ -70,7 +70,7 @@ namespace Plugin
                         ResponseFormat = typeof(PII)
                     });
 
-            // Console.WriteLine("Got to AFTER OpenAIPromptExecutionSettings");
+            Console.WriteLine("Got to AFTER OpenAIPromptExecutionSettings");
 
             string extractedPII = string.Empty;
 
@@ -91,7 +91,7 @@ namespace Plugin
                 return "File not found. Please provide a valid file path.";
             }
 
-            // Console.WriteLine($"Processing file: {filePath}");
+            Console.WriteLine($"Processing file: {filePath}");
             // Console.WriteLine($"Kernel Check: {kernel}");
 
             var imageBytes = await File.ReadAllBytesAsync(filePath);
