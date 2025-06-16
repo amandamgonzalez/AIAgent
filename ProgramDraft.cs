@@ -42,13 +42,11 @@ namespace AzureAIAgentSample
 
             // Ensure IChatCompletionService is registered
             builder.Services.AddSingleton<IChatCompletionService>(sp => new AzureOpenAIChatCompletionService(
-                settings.AzureAIAgent.ChatModel,
-                settings.AzureAIAgent.Endpoint,
+                settings.AzureOpenAI.ChatModelDeployment,
+                settings.AzureOpenAI.Endpoint,
+                // this works with Azure OpenAI but not with AzureAIAgents
                 sp.GetRequiredService<TokenCredential>()));
 
-
-            // Debugging to verify service registration
-            Console.WriteLine("IChatCompletionService registered successfully.");
 
             // Build the kernel before registering the plugin
             var kernel = builder.Build();
@@ -57,9 +55,7 @@ namespace AzureAIAgentSample
             var plugin = new PIIExtractionPlugin();
             kernel.Plugins.Add(KernelPluginFactory.CreateFromObject(plugin));
 
-            // Debugging to verify plugin registration
-            Console.WriteLine("PIIExtractionPlugin registered successfully.");
-
+        
             // Access the kernel services
             var client = kernel.Services.GetRequiredService<PersistentAgentsClient>();
 
@@ -106,32 +102,28 @@ namespace AzureAIAgentSample
                 definition,
                 client);
 
+            agent.Kernel.Plugins.Add(KernelPluginFactory.CreateFromType<PIIExtractionPlugin>());
+
             try
             {
-                // prompt the user for a file path
-                Console.WriteLine("Please enter the file path:");
-                string? filePath = Console.ReadLine();
+                // Allow user to type freely and let the agent decide when to invoke the plugin
+                Console.WriteLine("Please enter your request:");
+                string? userInput = Console.ReadLine();
 
-                if (!File.Exists(filePath))
+                if (string.IsNullOrWhiteSpace(userInput))
                 {
-                    Console.WriteLine("File does not exist. Please provide a valid file path.");
+                    Console.WriteLine("Input cannot be empty. Please provide a valid request.");
                     return;
                 }
 
-                // create chat history
-                Console.WriteLine("Creating chat history using PIIExtractionPlugin...");
-                var imageBytes = await File.ReadAllBytesAsync(filePath);
-                var chatHistory = plugin.CreateChatHistory(imageBytes);
+                // Pass the user input to the agent for analysis
+                var agentResponse = agent.InvokeAsync(userInput, thread);
 
-                // invoke the agent with the chat history
-                Console.WriteLine("Invoking Azure AI agent...");
-
-                // Access the ChatMessageContent within the response
-                await foreach (var response in agent.InvokeAsync(chatHistory, thread))
+                await foreach (var response in agentResponse)
                 {
                     if (response is AgentResponseItem<ChatMessageContent> chatResponse)
                     {
-                        Console.WriteLine("Response content:");
+                        Console.WriteLine("Agent Response:");
                         Console.WriteLine(chatResponse.Message?.ToString() ?? "Message is null");
                     }
                     else
@@ -140,11 +132,6 @@ namespace AzureAIAgentSample
                         Console.WriteLine(response.ToString());
                     }
                 }
-
-                Console.WriteLine("Invoking ExtractPIIAsync...");
-                var extractedPII = await plugin.ExtractPIIAsync(chatHistory, kernel);
-                Console.WriteLine("Extracted PII:");
-                Console.WriteLine(extractedPII);
             }
 
             catch (System.Text.Json.JsonException ex)

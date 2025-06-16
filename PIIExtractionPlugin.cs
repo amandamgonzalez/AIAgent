@@ -50,37 +50,30 @@ namespace Plugin
         [Description("Extracts PII from the provided chat history.")]
         public async Task<string> ExtractPIIAsync(ChatHistory chatHistory, Kernel kernel)
         {
-            Console.WriteLine("ExtractPIIAsync called with chatHistory.");
-
             var jsonSchema = GeneratePIISchema();
 
-            Console.WriteLine("Generated JSON schema: " + jsonSchema);
-
+            //Console.WriteLine("Generated JSON schema: " + jsonSchema);
+            Console.WriteLine("Got to ExtractPIIAsync");
 
             var chatUpdates = kernel.GetRequiredService<IChatCompletionService>()
                 .GetStreamingChatMessageContentsAsync(
                     chatHistory,
-                    new AzureOpenAIPromptExecutionSettings
+                    new OpenAIPromptExecutionSettings
                     {
-                        ResponseFormat = jsonSchema
-                        //ResponseFormat = typeof(PII)
+                        //ResponseFormat = jsonSchema
+                        ResponseFormat = typeof(PII)
 
                     });
+
+            Console.WriteLine("Got to AFTER OpenAIPromptExecutionSettings");
 
             string extractedPII = string.Empty;
 
             await foreach (var chatUpdate in chatUpdates)
             {
-                Console.WriteLine("Received chat update: " + chatUpdate.Content);
-
-                // Print the raw JSON output for debugging
-                Console.WriteLine("Raw JSON Output:");
-                Console.WriteLine(chatUpdate.Content);
-
                 extractedPII += chatUpdate.Content;
             }
 
-            Console.WriteLine("Extracted PII: " + extractedPII);
             return extractedPII;
         }
 
