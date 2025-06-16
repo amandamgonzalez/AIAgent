@@ -2,11 +2,8 @@ using System.ComponentModel;
 using System.Text.Json.Serialization;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
-using Newtonsoft.Json.Schema.Generation;
-using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
 
-using AzureAIAgentSample;
 
 // the order goes process_file -> create_chat_history -> extract_pii -> generate_pii_schema
 
@@ -87,7 +84,7 @@ namespace Plugin
 
         [KernelFunction("process_file")]
         [Description("Extracts PII from a file at the specified path.")]
-        public async Task<string> ProcessFileAsync(string filePath, Kernel kernel)
+        public async Task<string> ProcessFileAsync(string filePath)
         {
             if (!File.Exists(filePath))
             {
