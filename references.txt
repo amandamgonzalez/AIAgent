@@ -1,0 +1,84 @@
+From: semantic-kernel/dotnet/samples/GettingStartedWithAgents/AzureAIAgent/Step08_AzureAIAgent_Declarative.cs
+
+
+    [Fact]
+    public async Task AzureAIAgentWithConfiguration()
+    {
+        var text =
+            """
+            type: foundry_agent
+            name: MyAgent
+            description: My helpful agent.
+            instructions: You are helpful agent.
+            model:
+              id: ${AzureAI:ChatModelId}
+              connection:
+                connection_string: ${AzureAI:ConnectionString}
+            """;
+        AzureAIAgentFactory factory = new();
+
+        var builder = Kernel.CreateBuilder();
+        builder.Services.AddSingleton(this.Client);
+        builder.Services.AddSingleton<TokenCredential>(new AzureCliCredential());
+        var kernel = builder.Build();
+
+        var agent = await factory.CreateAgentFromYamlAsync(text, new() { Kernel = kernel }, TestConfiguration.ConfigurationRoot);
+
+        await InvokeAgentAsync(agent!, "Could you please create a bar chart for the operating profit using the following data and provide the file to me? Company A: $1.2 million, Company B: $2.5 million, Company C: $3.0 million, Company D: $1.8 million");
+    }
+
+    [Fact]
+    public async Task AzureAIAgentWithKernel()
+    {
+        var text =
+            """
+            type: foundry_agent
+            name: MyAgent
+            description: My helpful agent.
+            instructions: You are helpful agent.
+            model:
+              id: ${AzureOpenAI:ChatModelId}
+            """;
+        AzureAIAgentFactory factory = new();
+
+        var agent = await factory.CreateAgentFromYamlAsync(text, new() { Kernel = this._kernel }, TestConfiguration.ConfigurationRoot);
+
+        await InvokeAgentAsync(agent!, "Could you please create a bar chart for the operating profit using the following data and provide the file to me? Company A: $1.2 million, Company B: $2.5 million, Company C: $3.0 million, Company D: $1.8 million");
+    }
+
+    [Fact]
+    public async Task AzureAIAgentWithFunctions()
+    {
+        var text =
+            """
+            type: foundry_agent
+            name: FunctionCallingAgent
+            instructions: Use the provided functions to answer questions about the menu.
+            description: This agent uses the provided functions to answer questions about the menu.
+            model:
+              id: ${AzureAI:ChatModelId}
+              options:
+                temperature: 0.4
+            tools:
+              - id: GetSpecials
+                type: function
+                description: Get the specials from the menu.
+              - id: GetItemPrice
+                type: function
+                description: Get the price of an item on the menu.
+                options:
+                  parameters:
+                    - name: menuItem
+                      type: string
+                      required: true
+                      description: The name of the menu item.  
+            """;
+        AzureAIAgentFactory factory = new();
+
+        KernelPlugin plugin = KernelPluginFactory.CreateFromType<MenuPlugin>();
+        this._kernel.Plugins.Add(plugin);
+
+        var agent = await factory.CreateAgentFromYamlAsync(text, new() { Kernel = this._kernel }, TestConfiguration.ConfigurationRoot);
+
+        await InvokeAgentAsync(agent!, "What is the special soup and how much does it cost?");
+    }

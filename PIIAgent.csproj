@@ -25,4 +25,8 @@
     <NoWarn>$(NoWarn);CA2007;IDE1006;SKEXP0001;SKEXP0110;OPENAI001</NoWarn>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <StartupObject>AzureAIAgentSample.ProgramDraft</StartupObject>
+  </PropertyGroup>
+
 </Project>
