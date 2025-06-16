@@ -18,6 +18,7 @@ using Microsoft.SemanticKernel.Agents.AzureAI;
 using Azure.AI.Agents.Persistent; // dotnet add package Microsoft.SemanticKernel.Agents.AzureAI --prerelease
 using Plugin;
 using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
+using Microsoft.SemanticKernel.Agents;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
@@ -39,17 +40,25 @@ namespace AzureAIAgentSample
 
             builder.Services.AddSingleton<TokenCredential>(sp => new AzureCliCredential());
 
+            // Ensure IChatCompletionService is registered
             builder.Services.AddSingleton<IChatCompletionService>(sp => new AzureOpenAIChatCompletionService(
                 settings.AzureAIAgent.ChatModel,
                 settings.AzureAIAgent.Endpoint,
                 sp.GetRequiredService<TokenCredential>()));
 
-            // Build the kernel
+
+            // Debugging to verify service registration
+            Console.WriteLine("IChatCompletionService registered successfully.");
+
+            // Build the kernel before registering the plugin
             var kernel = builder.Build();
 
             // Register the PIIExtractionPlugin
-            // var plugin = new PIIExtractionPlugin();
-            // kernel.Plugins.Add(plugin);
+            var plugin = new PIIExtractionPlugin();
+            kernel.Plugins.Add(KernelPluginFactory.CreateFromObject(plugin));
+
+            // Debugging to verify plugin registration
+            Console.WriteLine("PIIExtractionPlugin registered successfully.");
 
             // Access the kernel services
             var client = kernel.Services.GetRequiredService<PersistentAgentsClient>();
@@ -61,48 +70,45 @@ namespace AzureAIAgentSample
             PersistentAgent definition = await client.Administration.CreateAgentAsync(
                 settings.AzureAIAgent.ChatModel,
                 name: "PIIAgent",
-                description: "Extract any Personally Identifiable Information (PII) from files",
-                responseFormat: BinaryData.FromString(
-                    """
-                    {
-                        "type": "json_schema",
-                        "json_schema": {
-                            "type": "object",
-                            "name": "PIIExtraction",
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "name": { "type": "string" },
-                                    "company_email": { "type": "string" },
-                                    "personal_email": { "type": "string" },
-                                    "personal_phone_number": { "type": "string" },
-                                    "company_phone_number": { "type": "string" },
-                                    "personal_address": { "type": "string" },
-                                    "company_ship_to_address": { "type": "string" },
-                                    "company_ship_from_address": { "type": "string" }
-                                },
-                                "required": [ "name", "company_email", "personal_email", "personal_phone_number", "company_phone_number", 
-                                    "personal_address", "company_ship_to_address", "company_ship_from_address" ],
-                                "additionalProperties": false
-                            },
-                            "strict": true
-                        }
-                    }
-                    """
-                ));
+                description: "Extract any Personally Identifiable Information (PII) from files"//,
+                // responseFormat: BinaryData.FromString(
+                //     """
+                //     {
+                //         "type": "json_schema",
+                //         "json_schema": {
+                //             "type": "object",
+                //             "name": "PIIExtraction",
+                //             "schema": {
+                //                 "type": "object",
+                //                 "properties": {
+                //                     "name": { "type": "string" },
+                //                     "company_email": { "type": "string" },
+                //                     "personal_email": { "type": "string" },
+                //                     "personal_phone_number": { "type": "string" },
+                //                     "company_phone_number": { "type": "string" },
+                //                     "personal_address": { "type": "string" },
+                //                     "company_ship_to_address": { "type": "string" },
+                //                     "company_ship_from_address": { "type": "string" }
+                //                 },
+                //                 "required": [ "name", "company_email", "personal_email", "personal_phone_number", "company_phone_number", 
+                //                     "personal_address", "company_ship_to_address", "company_ship_from_address" ],
+                //                 "additionalProperties": false
+                //             },
+                //             "strict": true
+                //         }
+                //     }
+                //     """
+                // )
+                );
 
-            // Create the agent with the definition
+            // create the agent with the definition
             AzureAIAgent agent = new(
                 definition,
                 client);
 
-            // Local function to create a message with an image reference
-            ChatMessageContent CreateMessageWithImageReference(string input, string fileId)
-                => new(AuthorRole.User, [new TextContent(input), new FileReferenceContent(fileId)]);
-
             try
             {
-                // Prompt the user for a file path
+                // prompt the user for a file path
                 Console.WriteLine("Please enter the file path:");
                 string? filePath = Console.ReadLine();
 
@@ -112,35 +118,33 @@ namespace AzureAIAgentSample
                     return;
                 }
 
-                using (FileStream imageStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+                // create chat history
+                Console.WriteLine("Creating chat history using PIIExtractionPlugin...");
+                var imageBytes = await File.ReadAllBytesAsync(filePath);
+                var chatHistory = plugin.CreateChatHistory(imageBytes);
+
+                // invoke the agent with the chat history
+                Console.WriteLine("Invoking Azure AI agent...");
+
+                // Access the ChatMessageContent within the response
+                await foreach (var response in agent.InvokeAsync(chatHistory, thread))
                 {
-                    // Upload the image and get the file id
-                    PersistentAgentFileInfo fileInfo = await client.Files.UploadFileAsync(imageStream, PersistentAgentFilePurpose.Agents, Path.GetFileName(filePath));
-
-                    // Create a message with the image reference 
-                    ChatMessageContent imageMessage = CreateMessageWithImageReference("Extract any Personally Identifiable Information (PII) from image.", fileInfo.Id);
-
-                    // Invoke the agent
-                    Console.WriteLine("Structured Output:");
-                    await foreach (ChatMessageContent response in agent.InvokeAsync(imageMessage, thread))
+                    if (response is AgentResponseItem<ChatMessageContent> chatResponse)
                     {
-                        try
-                        {
-                            if (!string.IsNullOrEmpty(response.Content))
-                            {
-                                Console.WriteLine(response.Content);
-                            }
-                            else
-                            {
-                                Console.WriteLine("Response content is null or empty.");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Failed to process structured output: {ex.Message}");
-                        }
+                        Console.WriteLine("Response content:");
+                        Console.WriteLine(chatResponse.Message?.ToString() ?? "Message is null");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Unexpected response type:");
+                        Console.WriteLine(response.ToString());
                     }
                 }
+
+                Console.WriteLine("Invoking ExtractPIIAsync...");
+                var extractedPII = await plugin.ExtractPIIAsync(chatHistory, kernel);
+                Console.WriteLine("Extracted PII:");
+                Console.WriteLine(extractedPII);
             }
 
             catch (System.Text.Json.JsonException ex)
