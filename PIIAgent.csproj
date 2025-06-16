@@ -27,7 +27,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <StartupObject>AzureAIAgentSample.ProgramDraft</StartupObject>
+    <StartupObject>AzureAIAgentSample.ProgramWithPlugin</StartupObject>
   </PropertyGroup>
 
 </Project>
