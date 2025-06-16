@@ -13,14 +13,14 @@ namespace Plugin
     {
         // private readonly JSchemaGenerator _schemaGenerator;
         private readonly string _systemMessage;
-        private readonly Kernel _kernel;
+        // private readonly Kernel _kernel;
         // passing kernel directly to the plugin allows it to access services like IChatCompletionService
 
-        public PIIExtractionPlugin(Kernel kernel)
+        public PIIExtractionPlugin()
         {
             // _schemaGenerator = new JSchemaGenerator();
             _systemMessage = "Extract any Personally Identifiable Information (PII) in files you receive.";
-            _kernel = kernel;
+            // _kernel = kernel;
         }
 
         // [KernelFunction("generate_pii_schema")]
@@ -47,14 +47,14 @@ namespace Plugin
 
         [KernelFunction("extract_pii")]
         [Description("Extracts PII from the provided chat history.")]
-        public async Task<string> ExtractPIIAsync(ChatHistory chatHistory)
+        public async Task<string> ExtractPIIAsync(ChatHistory chatHistory, Kernel kernel)
         {
             // var jsonSchema = GeneratePIISchema();
 
             // Console.WriteLine("Generated JSON schema: " + jsonSchema);
             Console.WriteLine("Got to ExtractPIIAsync");
 
-            var chatCompletionService = _kernel.GetRequiredService<IChatCompletionService>();
+            var chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
 
             // if (chatCompletionService == null)
             // {
@@ -83,8 +83,8 @@ namespace Plugin
         }
 
         [KernelFunction("process_file")]
-        [Description("Extracts PII from a file at the specified path.")]
-        public async Task<string> ProcessFileAsync(string filePath)
+        [Description("Extracts PII from a file at the specified path if you have a path and kernel.")]
+        public async Task<string> ProcessFileAsync(string filePath, Kernel kernel)
         {
             if (!File.Exists(filePath))
             {
@@ -96,7 +96,7 @@ namespace Plugin
 
             var imageBytes = await File.ReadAllBytesAsync(filePath);
             var chatHistory = CreateChatHistory(imageBytes);
-            return await ExtractPIIAsync(chatHistory);
+            return await ExtractPIIAsync(chatHistory, kernel);
         }
     }
 

@@ -30,7 +30,7 @@ namespace AzureAIAgentSample
     {
         public static async Task Main()
         {
-            // Llad configuration
+            // load configuration
             Settings settings = new();
 
             //create a client to interact with Azure AI Agent
@@ -44,33 +44,44 @@ namespace AzureAIAgentSample
                 If someone asks 'Who are you?', always respond with 'I am PIIAgent.' You have access to a plugin that can help you with this task.",
                 instructions: @"You are a PII Extraction Agent. Your job is to extract any Personally Identifiable Information (PII) from files you receive.");
 
-            // Configure the Kernel with dependency injection
-            var serviceCollection = new ServiceCollection();
-            serviceCollection.AddSingleton(client);
-            serviceCollection.AddSingleton<TokenCredential>(new AzureCliCredential());
-            serviceCollection.AddSingleton<Kernel>(sp =>
-            {
-                return Kernel.CreateBuilder()
+            // APPROACH ONE: service collection approach
+
+            // var serviceCollection = new ServiceCollection();
+            // serviceCollection.AddSingleton(client);
+            // serviceCollection.AddSingleton<TokenCredential>(new AzureCliCredential());
+            // serviceCollection.AddSingleton<Kernel>(sp =>
+            // {
+            //     return Kernel.CreateBuilder()
+            //         .AddAzureOpenAIChatCompletion(
+            //             settings.AzureOpenAI.ChatModelDeployment,
+            //             settings.AzureOpenAI.Endpoint,
+            //             sp.GetRequiredService<TokenCredential>())
+            //         .Build();
+            // });
+
+            // var serviceProvider = serviceCollection.BuildServiceProvider();
+
+            // APPROACH TWO: semantic kernel repo approach
+            // var builder = Kernel.CreateBuilder();
+            // builder.Services.AddSingleton(client);
+            // builder.Services.AddSingleton<TokenCredential>(new AzureCliCredential());
+            // var kernel = builder.Build();
+
+            // APPROACH THREE: using Kernel.CreateBuilder() directly, and adding it to the Agent below
+            Kernel kernel = Kernel.CreateBuilder()
                     .AddAzureOpenAIChatCompletion(
                         settings.AzureOpenAI.ChatModelDeployment,
                         settings.AzureOpenAI.Endpoint,
-                        sp.GetRequiredService<TokenCredential>())
+                        new AzureCliCredential())
                     .Build();
-            });
 
-            var serviceProvider = serviceCollection.BuildServiceProvider();
-
-            // create the agent with the definition
-            AzureAIAgent agent = new(
-                definition,
-                client)
-            { 
-                Kernel = serviceProvider.GetRequiredService<Kernel>()
+            var agent = new AzureAIAgent(definition, client)
+            {
+                Kernel = kernel
             };
 
-            // Create the plugin using the service provider
-            KernelPlugin plugin = KernelPluginFactory.CreateFromType<PIIExtractionPlugin>("PIIExtractionPlugin", serviceProvider);
-            agent.Kernel.Plugins.Add(plugin);
+            agent.Kernel.Plugins.Add(KernelPluginFactory.CreateFromType<PIIExtractionPlugin>());
+            // automatically passes the kernel to the PIIExtractionPlugin when called
 
             AgentThread thread = new AzureAIAgentThread(client);
             
@@ -98,8 +109,6 @@ namespace AzureAIAgentSample
 
                     // pass the user input to the agent for analysis
                     var agentResponse = agent.InvokeAsync(new ChatMessageContent(AuthorRole.User, userInput), thread);
-
-                    agent.InvokeAsync(new ChatMessageContent(AuthorRole.System, "You are an agent. Your name is PII agent"), thread);
 
                     await foreach (var response in agentResponse)
                     {
