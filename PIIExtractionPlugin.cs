@@ -25,6 +25,7 @@ namespace Plugin
         [Description("Generates a JSON schema for PII extraction.")]
         public string GeneratePIISchema()
         {
+            Console.WriteLine("[LOG] GeneratePIISchema method called.");
             return _schemaGenerator.Generate(typeof(PII)).ToString();
         }
 
@@ -32,6 +33,7 @@ namespace Plugin
         [Description("Creates chat history from image bytes.")]
         public ChatHistory CreateChatHistory(byte[] imageBytes)
         {
+            Console.WriteLine("[LOG] CreateChatHistory method called.");
             var imageContent = new ImageContent(data: imageBytes, mimeType: "image/png");
             var imageCollection = new ChatMessageContentItemCollection();
             imageCollection.Add(imageContent);
@@ -46,6 +48,7 @@ namespace Plugin
         [Description("Extracts PII from the provided chat history.")]
         public async Task<string> ExtractPIIAsync(ChatHistory chatHistory, Kernel kernel)
         {
+            Console.WriteLine("[LOG] ExtractPIIAsync method called.");
             var jsonSchema = GeneratePIISchema();
 
             var chatUpdates = kernel.GetRequiredService<IChatCompletionService>()
@@ -70,6 +73,7 @@ namespace Plugin
         [Description("Processes a file, extracts its content, and detects PII.")]
         public async Task<string> ProcessFileAsync(string filePath, Kernel kernel)
         {
+            Console.WriteLine("[LOG] ProcessFileAsync method called.");
             if (!File.Exists(filePath))
             {
                 return "File not found. Please provide a valid file path.";
