@@ -27,7 +27,7 @@ namespace ChatCompletionAgentSample
             // define agent
             ChatCompletionAgent agent = new()
             {
-                Name = "PII Agent",
+                Name = "PIIAgent", // Updated to remove the space to match the required pattern
                 Instructions = $" You are an agent designed to extract any Personally Identifiable Information (PII) in files you receive.\n" +
                 "Your name is PII Agent, and you are only allowed to answer questions relating PII, and document extraction. \n" +
                 "If the user provides a file path, process the file and extract PII.",
@@ -43,7 +43,7 @@ namespace ChatCompletionAgentSample
 
             // create a history to store the conversation
             // chat history is how the plugin will be able to access the image
-            var history = new ChatHistory();
+            //var history = new ChatHistory();
             
             // history.AddSystemMessage(
             // "Your name is PIIAgent. If the user provides a file path, process the file and extract PII. 
@@ -73,7 +73,7 @@ namespace ChatCompletionAgentSample
                 }
 
                 // add the user message to the chat history
-                history.AddUserMessage(input);
+                // history.AddUserMessage(input);
 
                 // invoke the agent
                 await foreach (ChatMessageContent response in agent.InvokeAsync(input, agentThread))
@@ -83,10 +83,10 @@ namespace ChatCompletionAgentSample
                     Console.WriteLine($"Assistant > {response.Content}");
 
                     // add the assistant's response to the chat history
-                    if (!string.IsNullOrWhiteSpace(response.Content))
-                    {
-                        history.AddAssistantMessage(response.Content);
-                    }
+                    // if (!string.IsNullOrWhiteSpace(response.Content))
+                    // {
+                    //     history.AddAssistantMessage(response.Content);
+                    // }
                 }
             } while (!isComplete);
 

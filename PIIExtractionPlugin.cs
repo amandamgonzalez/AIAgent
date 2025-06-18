@@ -11,22 +11,13 @@ namespace Plugin
 {
     public class PIIExtractionPlugin
     {
-        private readonly JSchemaGenerator _schemaGenerator;
         private readonly string _systemMessage;
 
         public PIIExtractionPlugin()
         {
-            _schemaGenerator = new JSchemaGenerator();
             _systemMessage = "Extract any Personally Identifiable Information (PII) in files you receive.";
         }
 
-        [KernelFunction("generate_pii_schema")]
-        [Description("Generates a JSON schema for PII extraction.")]
-        public string GeneratePIISchema()
-        {
-            Console.WriteLine("[LOG] GeneratePIISchema method called.");
-            return _schemaGenerator.Generate(typeof(PII)).ToString();
-        }
 
         [KernelFunction("create_chat_history")]
         [Description("Creates chat history from image bytes.")]
@@ -48,15 +39,13 @@ namespace Plugin
         public async Task<string> ExtractPIIAsync(ChatHistory chatHistory, Kernel kernel)
         {
             Console.WriteLine("[LOG] ExtractPIIAsync method called.");
-            var jsonSchema = GeneratePIISchema();
 
             var chatUpdates = kernel.GetRequiredService<IChatCompletionService>()
                 .GetStreamingChatMessageContentsAsync(
                     chatHistory,
                     new OpenAIPromptExecutionSettings
                     {
-                        ResponseFormat = jsonSchema
-                        // responseFormat = typeof(PII) is a different way to specify the response format
+                        ResponseFormat = typeof(PII)
                     });
 
             string extractedPII = string.Empty;
