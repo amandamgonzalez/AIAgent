@@ -1,11 +1,8 @@
 {
   "ExpandedNodes": [
     "",
-    "\\WebApp",
-    "\\WebApp\\Configuration",
-    "\\WebApp\\Controllers",
-    "\\WebApp\\Plugins"
+    "\\Controllers"
   ],
-  "SelectedNode": "\\WebApp\\Plugins\\PIIExtractionPlugin.cs",
+  "SelectedNode": "\\Controllers\\ChatController.cs",
   "PreviewInSolutionExplorer": false
 }
