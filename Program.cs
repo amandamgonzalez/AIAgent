@@ -1,12 +1,8 @@
-﻿using System;
-using System.IO;
-using System.Threading.Tasks;
-using Azure.Identity;
+﻿using Azure.Identity;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.ChatCompletion;
-
-using ChatPlugin;
+using Plugin;
 
 namespace ChatCompletionAgentSample
 {
@@ -18,10 +14,9 @@ namespace ChatCompletionAgentSample
             Settings settings = new();
 
             // initialize kernel
-            Console.WriteLine("Creating kernel...");
-            
             IKernelBuilder builder = Kernel.CreateBuilder();
 
+            // add Azure OpenAI chat completion service to the kernel
             builder.AddAzureOpenAIChatCompletion(
                 settings.AzureOpenAI.ChatModelDeployment,
                 settings.AzureOpenAI.Endpoint,
@@ -30,26 +25,29 @@ namespace ChatCompletionAgentSample
             Kernel kernel = builder.Build();
 
             // define agent
-            Console.WriteLine("Defining agent...");
             ChatCompletionAgent agent = new()
             {
-                Name = "PIIAgent",
+                Name = "PII Agent",
                 Instructions = $" You are an agent designed to extract any Personally Identifiable Information (PII) in files you receive.\n" +
+                "Your name is PII Agent, and you are only allowed to answer questions relating PII, and document extraction. \n" +
                 "If the user provides a file path, process the file and extract PII.",
                 Kernel = kernel,
+
+                // allow the agent to automatically choose the plugins, and function to execute based on the input
                 Arguments = new KernelArguments(new PromptExecutionSettings() { FunctionChoiceBehavior = FunctionChoiceBehavior.Auto() }),
             };
 
-            // initialize plugin and add to the agent's Kernel (same as direct Kernel usage).
+            // initialize plugin and add to the agent's kernel 
+            // there's a difference between adding it directly to the kernel and adding it to the agent's kernel
             agent.Kernel.Plugins.Add(KernelPluginFactory.CreateFromType<PIIExtractionPlugin>());
-
-            // Console.WriteLine("Hello! I am Personally Identifiable Information Detection Agent, here to help you detect PII in image files.");
 
             // create a history to store the conversation
             // chat history is how the plugin will be able to access the image
             var history = new ChatHistory();
             
-            history.AddSystemMessage("You are an agent designed to extract any Personally Identifiable Information (PII) in files you receive. Your name is PIIAgent. If the user provides a file path, process the file and extract PII. Don't answer questions that are not related to PII extraction.");
+            // history.AddSystemMessage(
+            // "Your name is PIIAgent. If the user provides a file path, process the file and extract PII. 
+            // Don't answer questions that are not related to PII extraction.");
 
             // create agent thread
             ChatHistoryAgentThread agentThread = new();
@@ -67,6 +65,7 @@ namespace ChatCompletionAgentSample
                     continue;
                 }
 
+                // check for exit command by the user
                 if (input.Trim().Equals("EXIT", StringComparison.OrdinalIgnoreCase))
                 {
                     isComplete = true;
@@ -79,9 +78,11 @@ namespace ChatCompletionAgentSample
                 // invoke the agent
                 await foreach (ChatMessageContent response in agent.InvokeAsync(input, agentThread))
                 {
+                    // agent will call the plugin methods based on the input
+
                     Console.WriteLine($"Assistant > {response.Content}");
 
-                    // add the assistant's response to the chat history if not null
+                    // add the assistant's response to the chat history
                     if (!string.IsNullOrWhiteSpace(response.Content))
                     {
                         history.AddAssistantMessage(response.Content);
