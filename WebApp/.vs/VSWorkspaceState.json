@@ -1,0 +1,11 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\WebApp",
+    "\\WebApp\\Configuration",
+    "\\WebApp\\Controllers",
+    "\\WebApp\\Plugins"
+  ],
+  "SelectedNode": "\\WebApp\\Plugins\\PIIExtractionPlugin.cs",
+  "PreviewInSolutionExplorer": false
+}
