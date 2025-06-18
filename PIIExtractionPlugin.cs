@@ -6,6 +6,7 @@ using Newtonsoft.Json.Schema.Generation;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 
 // the order goes process_file -> create_chat_history -> extract_pii -> generate_pii_schema
+// plugin function name, and description are used by the agent to know what methods to call!
 
 namespace ChatPlugin
 {
@@ -20,19 +21,23 @@ namespace ChatPlugin
             _systemMessage = "Extract any Personally Identifiable Information (PII) in files you receive.";
         }
 
+        // generates a JSON schema for PII extraction based on the PII class below
         [KernelFunction("generate_pii_schema")]
         [Description("Generates a JSON schema for PII extraction.")]
         public string GeneratePIISchema()
         {
             Console.WriteLine("[LOG] GeneratePIISchema method called.");
+
             return _schemaGenerator.Generate(typeof(PII)).ToString();
         }
 
+        // creates a chat history from the image bytes
         [KernelFunction("create_chat_history")]
         [Description("Creates chat history from image bytes.")]
         public ChatHistory CreateChatHistory(byte[] imageBytes)
         {
             Console.WriteLine("[LOG] CreateChatHistory method called.");
+
             var imageContent = new ImageContent(data: imageBytes, mimeType: "image/png");
             var imageCollection = new ChatMessageContentItemCollection();
             imageCollection.Add(imageContent);
@@ -43,11 +48,13 @@ namespace ChatPlugin
             return chatHistory;
         }
 
+
         [KernelFunction("extract_pii")]
         [Description("Extracts PII from the provided chat history.")]
         public async Task<string> ExtractPIIAsync(ChatHistory chatHistory, Kernel kernel)
         {
             Console.WriteLine("[LOG] ExtractPIIAsync method called.");
+
             var jsonSchema = GeneratePIISchema();
 
             var chatUpdates = kernel.GetRequiredService<IChatCompletionService>()
@@ -55,7 +62,8 @@ namespace ChatPlugin
                     chatHistory,
                     new OpenAIPromptExecutionSettings
                     {
-                        ResponseFormat = typeof(PII)
+                        //ResponseFormat = typeof(PII)
+                        ResponseFormat =  jsonSchema
                     });
 
             string extractedPII = string.Empty;
@@ -68,11 +76,13 @@ namespace ChatPlugin
             return extractedPII;
         }
 
+        // first method to be called by the agent to process a file
         [KernelFunction("process_file")]
         [Description("Processes a file, extracts its content, and detects PII.")]
         public async Task<string> ProcessFileAsync(string filePath, Kernel kernel)
         {
             Console.WriteLine("[LOG] ProcessFileAsync method called.");
+            
             if (!File.Exists(filePath))
             {
                 return "File not found. Please provide a valid file path.";

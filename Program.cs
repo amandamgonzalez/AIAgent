@@ -21,7 +21,7 @@ namespace ChatCompletionAgentSample
                 settings.AzureOpenAI.ChatModelDeployment,
                 settings.AzureOpenAI.Endpoint,
                 new AzureCliCredential());
-            
+
             Kernel kernel = builder.Build();
 
             // define agent
@@ -43,8 +43,9 @@ namespace ChatCompletionAgentSample
 
             // create a history to store the conversation
             // chat history is how the plugin will be able to access the image
-            var history = new ChatHistory();
-            
+
+            // var history = new ChatHistory();
+
             // history.AddSystemMessage(
             // "Your name is PIIAgent. If the user provides a file path, process the file and extract PII. 
             // Don't answer questions that are not related to PII extraction.");
@@ -73,7 +74,7 @@ namespace ChatCompletionAgentSample
                 }
 
                 // add the user message to the chat history
-                history.AddUserMessage(input);
+                // history.AddUserMessage(input);
 
                 // invoke the agent
                 await foreach (ChatMessageContent response in agent.InvokeAsync(input, agentThread))
@@ -85,7 +86,7 @@ namespace ChatCompletionAgentSample
                     // add the assistant's response to the chat history
                     if (!string.IsNullOrWhiteSpace(response.Content))
                     {
-                        history.AddAssistantMessage(response.Content);
+                        // history.AddAssistantMessage(response.Content);
                     }
                 }
             } while (!isComplete);
@@ -94,3 +95,5 @@ namespace ChatCompletionAgentSample
         }
     }
 }
+
+// i don't think we need to keep a chat history here, as it is initialized in the plugin
