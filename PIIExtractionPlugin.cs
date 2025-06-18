@@ -5,10 +5,9 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using Newtonsoft.Json.Schema.Generation;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 
-
 // the order goes process_file -> create_chat_history -> extract_pii -> generate_pii_schema
 
-namespace Plugin
+namespace ChatPlugin
 {
     public class PIIExtractionPlugin
     {

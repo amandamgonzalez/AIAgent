@@ -1,14 +1,9 @@
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using AgentsSample;
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc; //dotnet add package Microsoft.AspNetCore.Mvc
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
-using Microsoft.SemanticKernel.ChatCompletion;
 using Plugin;
-using Microsoft.SemanticKernel.Connectors.OpenAI;
-using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
+
 
 namespace WebApp.Controllers
 {
@@ -46,14 +41,14 @@ namespace WebApp.Controllers
                     foreach (var msg in request.History)
                     {
                         if (msg.Sender == "user")
-                            agentThread.ChatHistory.AddUserMessage(msg.Text);
+                            agentThread.ChatHistory.AddUserMessage(msg.Text ?? string.Empty);
                         else
-                            agentThread.ChatHistory.AddAssistantMessage(msg.Text);
+                            agentThread.ChatHistory.AddAssistantMessage(msg.Text ?? string.Empty);
                     }
                 }
 
                 // 3. Compose input (message + file info)
-                string input = request.Message;
+                string input = request.Message ?? string.Empty;
                 if (request.Files != null && request.Files.Count > 0)
                 {
                     input += "\nFiles: " + string.Join(", ", request.Files.Select(f => f.Name));
@@ -82,21 +77,21 @@ namespace WebApp.Controllers
     // Models for request/response
     public class ChatRequest
     {
-        public string Message { get; set; }
-        public List<ChatFile> Files { get; set; }
-        public List<ChatMessage> History { get; set; }
+        public string? Message { get; set; }
+        public List<ChatFile>? Files { get; set; }
+        public List<ChatMessage>? History { get; set; }
     }
 
     public class ChatFile
     {
-        public string Name { get; set; }
+        public string? Name { get; set; }
         public long Size { get; set; }
-        public string Type { get; set; }
+        public string? Type { get; set; }
     }
 
     public class ChatMessage
     {
-        public string Sender { get; set; }
-        public string Text { get; set; }
+        public string? Sender { get; set; }
+        public string? Text { get; set; }
     }
 }

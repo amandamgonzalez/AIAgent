@@ -30,6 +30,10 @@ namespace WebApp.Controllers
             var plugin = new PIIExtractionPlugin();
 
             // Call the plugin directly with the file path
+            if (string.IsNullOrEmpty(request.FilePath))
+            {
+                return BadRequest("FilePath is required.");
+            }
             var result = await plugin.ProcessFileAsync(request.FilePath, kernel);
 
             return Ok(new { PII = result });
@@ -38,6 +42,6 @@ namespace WebApp.Controllers
 
     public class PiiRequest
     {
-        public string FilePath { get; set; }
+        public string? FilePath { get; set; }
     }
 }

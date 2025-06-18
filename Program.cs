@@ -6,9 +6,9 @@ using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.ChatCompletion;
 
-using Plugin;
+using ChatPlugin;
 
-namespace AgentsSample
+namespace ChatCompletionAgentSample
 {
     public static class Program
     {
