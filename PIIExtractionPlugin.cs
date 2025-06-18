@@ -5,7 +5,6 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using Newtonsoft.Json.Schema.Generation;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 
-
 // the order goes process_file -> create_chat_history -> extract_pii -> generate_pii_schema
 
 namespace Plugin
@@ -56,7 +55,8 @@ namespace Plugin
                     chatHistory,
                     new OpenAIPromptExecutionSettings
                     {
-                        ResponseFormat = typeof(PII)
+                        ResponseFormat = jsonSchema
+                        // responseFormat = typeof(PII) is a different way to specify the response format
                     });
 
             string extractedPII = string.Empty;
