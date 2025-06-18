@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace ChatCompletionAgentSample;
 
+// configure user secrets or environment variables, to be able to connect to an Azure OpenAI resource
 public class Settings
 {
     private readonly IConfigurationRoot configRoot;

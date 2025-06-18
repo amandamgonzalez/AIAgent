@@ -2,10 +2,10 @@ using System.ComponentModel;
 using System.Text.Json.Serialization;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
-using Newtonsoft.Json.Schema.Generation;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 
-// the order goes process_file -> create_chat_history -> extract_pii -> generate_pii_schema
+// the order goes process_file -> create_chat_history -> extract_pii
+// the agent calls the process_file method
 
 namespace Plugin
 {
@@ -18,16 +18,33 @@ namespace Plugin
             _systemMessage = "Extract any Personally Identifiable Information (PII) in files you receive.";
         }
 
+        [KernelFunction("process_file")]
+        [Description("Processes a file, extracts its content, and detects PII.")]
+        public async Task<string> ProcessFileAsync(string filePath, Kernel kernel)
+        {
+            Console.WriteLine("[LOG] ProcessFileAsync method called.");
+
+            if (!File.Exists(filePath))
+            {
+                return "File not found. Please provide a valid file path.";
+            }
+
+            var imageBytes = await File.ReadAllBytesAsync(filePath);
+            var chatHistory = CreateChatHistory(imageBytes); // pass image content object as a user message
+            return await ExtractPIIAsync(chatHistory, kernel); // pass chat history and JSON schema
+        }
 
         [KernelFunction("create_chat_history")]
         [Description("Creates chat history from image bytes.")]
         public ChatHistory CreateChatHistory(byte[] imageBytes)
         {
             Console.WriteLine("[LOG] CreateChatHistory method called.");
+
             var imageContent = new ImageContent(data: imageBytes, mimeType: "image/png");
             var imageCollection = new ChatMessageContentItemCollection();
             imageCollection.Add(imageContent);
 
+            // create a new chat history with the system message, then add the image content as a user message
             var chatHistory = new ChatHistory(systemMessage: _systemMessage);
             chatHistory.AddUserMessage(imageCollection);
 
@@ -40,6 +57,7 @@ namespace Plugin
         {
             Console.WriteLine("[LOG] ExtractPIIAsync method called.");
 
+            // call to the LLM happens here, we pass the chat history, and the expected response format
             var chatUpdates = kernel.GetRequiredService<IChatCompletionService>()
                 .GetStreamingChatMessageContentsAsync(
                     chatHistory,
@@ -58,20 +76,6 @@ namespace Plugin
             return extractedPII;
         }
 
-        [KernelFunction("process_file")]
-        [Description("Processes a file, extracts its content, and detects PII.")]
-        public async Task<string> ProcessFileAsync(string filePath, Kernel kernel)
-        {
-            Console.WriteLine("[LOG] ProcessFileAsync method called.");
-            if (!File.Exists(filePath))
-            {
-                return "File not found. Please provide a valid file path.";
-            }
-
-            var imageBytes = await File.ReadAllBytesAsync(filePath);
-            var chatHistory = CreateChatHistory(imageBytes);
-            return await ExtractPIIAsync(chatHistory, kernel);
-        }
     }
 
     // structured output for PII extraction
