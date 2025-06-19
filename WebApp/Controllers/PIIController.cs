@@ -6,6 +6,8 @@ using Azure.Identity;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Plugin;
 
+// in this controller, there is no agent, and the plugin is called directly
+
 namespace WebApp.Controllers
 {
     [ApiController]
@@ -15,25 +17,28 @@ namespace WebApp.Controllers
         [HttpPost("extract")]
         public async Task<IActionResult> ExtractPII([FromBody] PiiRequest request)
         {
-            // Load configuration and initialize kernel
+            // load configuration
             var settings = new Settings();
+
+            // initialize kernel
             var builder = Kernel.CreateBuilder();
             builder.AddAzureOpenAIChatCompletion(
                 settings.AzureOpenAI.ChatModelDeployment,
                 settings.AzureOpenAI.Endpoint,
                 new Azure.Identity.AzureCliCredential());
+                
             var kernel = builder.Build();
 
-            var history = new ChatHistory();
-
-            // Initialize plugin
+            // initialize plugin
             var plugin = new PIIExtractionPlugin();
 
-            // Call the plugin directly with the file path
+            // call the plugin directly with the file path
             if (string.IsNullOrEmpty(request.FilePath))
             {
                 return BadRequest("FilePath is required.");
             }
+
+            // in this example the plugin is called manually
             var result = await plugin.ProcessFileAsync(request.FilePath, kernel);
 
             return Ok(new { PII = result });

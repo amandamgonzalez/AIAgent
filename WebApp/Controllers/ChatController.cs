@@ -4,7 +4,6 @@ using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
 using Plugin;
 
-
 namespace WebApp.Controllers
 {
     [ApiController]
@@ -16,7 +15,7 @@ namespace WebApp.Controllers
         {
             try
             {
-                // 1. Set up kernel and agent
+                // set up kernel and agent
                 var settings = new Settings();
                 var builder = Kernel.CreateBuilder();
                 builder.AddAzureOpenAIChatCompletion(
@@ -32,9 +31,11 @@ namespace WebApp.Controllers
                     Kernel = kernel,
                     Arguments = new KernelArguments(new PromptExecutionSettings { FunctionChoiceBehavior = FunctionChoiceBehavior.Auto() }),
                 };
+
+                // add plugin to agent's kernel
                 agent.Kernel.Plugins.Add(KernelPluginFactory.CreateFromType<PIIExtractionPlugin>());
 
-                // 2. Rebuild chat history if provided
+                // rebuild chat history if provided
                 var agentThread = new ChatHistoryAgentThread();
                 if (request.History != null)
                 {
@@ -47,28 +48,28 @@ namespace WebApp.Controllers
                     }
                 }
 
-                // 3. Compose input (message + file info)
+                // compose input (message + file info)
                 string input = request.Message ?? string.Empty;
                 if (request.Files != null && request.Files.Count > 0)
                 {
                     input += "\nFiles: " + string.Join(", ", request.Files.Select(f => f.Name));
                 }
 
-                // 4. Call the agent
+                // call the agent
                 string result = "";
                 await foreach (ChatMessageContent response in agent.InvokeAsync(input, agentThread))
                 {
                     result += response.Content;
                 }
 
-                // 5. Return as array for frontend compatibility
+                // return as array for frontend compatibility
                 return Ok(new[] { new { content = result } });
             }
             catch (Exception ex)
             {
-                // Log to console for backend debugging
+                // log to console for backend debugging
                 Console.WriteLine("Agent error: " + ex.ToString());
-                // Return error to frontend for easier troubleshooting
+                // sending error to frontend for easier troubleshooting
                 return StatusCode(500, new[] { new { content = $"Agent error: {ex.Message}" } });
             }
         }

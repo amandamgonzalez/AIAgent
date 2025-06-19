@@ -1,6 +1,7 @@
 using System.Reflection;
 using Microsoft.Extensions.Configuration;
 
+// set up user secrets or environment variables to connect to resources
 namespace AgentsSample;
 
 public class Settings
@@ -8,22 +9,13 @@ public class Settings
     private readonly IConfigurationRoot configRoot;
 
     private AzureOpenAISettings azureOpenAI;
-    private OpenAISettings openAI;
 
     public AzureOpenAISettings AzureOpenAI => this.azureOpenAI ??= this.GetSettings<Settings.AzureOpenAISettings>();
-    public OpenAISettings OpenAI => this.openAI ??= this.GetSettings<Settings.OpenAISettings>();
-
-    public class OpenAISettings
-    {
-        public string ChatModel { get; set; } = string.Empty;
-        // public string ApiKey { get; set; } = string.Empty;
-    }
 
     public class AzureOpenAISettings
     {
         public string ChatModelDeployment { get; set; } = string.Empty;
         public string Endpoint { get; set; } = string.Empty;
-        // public string ApiKey { get; set; } = string.Empty;
     }
 
     public TSettings GetSettings<TSettings>() =>

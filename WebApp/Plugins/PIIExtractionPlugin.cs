@@ -4,8 +4,7 @@ using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 
-
-// the order goes process_file -> create_chat_history -> extract_pii -> generate_pii_schema
+// the order goes process_file -> create_chat_history -> extract_pii
 
 namespace Plugin
 {
@@ -16,6 +15,21 @@ namespace Plugin
         public PIIExtractionPlugin()
         {
             _systemMessage = "Extract any Personally Identifiable Information (PII) in files you receive.";
+        }
+
+        [KernelFunction("process_file")]
+        [Description("Processes a file, extracts its content, and detects PII.")]
+        public async Task<string> ProcessFileAsync(string filePath, Kernel kernel)
+        {
+            Console.WriteLine("[LOG] ProcessFileAsync method called.");
+            if (!File.Exists(filePath))
+            {
+                return "File not found. Please provide a valid file path.";
+            }
+
+            var imageBytes = await File.ReadAllBytesAsync(filePath);
+            var chatHistory = CreateChatHistory(imageBytes); // create chat history, and pass image content object as a user message
+            return await ExtractPIIAsync(chatHistory, kernel); // pass chat history and JSON schema
         }
 
         [KernelFunction("create_chat_history")]
@@ -56,24 +70,9 @@ namespace Plugin
 
             return extractedPII;
         }
-
-        [KernelFunction("process_file")]
-        [Description("Processes a file, extracts its content, and detects PII.")]
-        public async Task<string> ProcessFileAsync(string filePath, Kernel kernel)
-        {
-            Console.WriteLine("[LOG] ProcessFileAsync method called.");
-            if (!File.Exists(filePath))
-            {
-                return "File not found. Please provide a valid file path.";
-            }
-
-            var imageBytes = await File.ReadAllBytesAsync(filePath);
-            var chatHistory = CreateChatHistory(imageBytes);
-            return await ExtractPIIAsync(chatHistory, kernel);
-        }
     }
 
-    // structured output for PII extraction
+    // response format class for structured output
     public class PII
     {
         [JsonPropertyName("name")]
