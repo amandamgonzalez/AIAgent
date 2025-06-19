@@ -1,6 +1,7 @@
 @WebApp_HostAddress = http://localhost:5208
 
-GET {{WebApp_HostAddress}}/weatherforecast/
-Accept: application/json
+// old (weather forecast is now deleted) but leaving here for future references
+//HTTP request to get weather forecast
 
-###
+# GET {{WebApp_HostAddress}}/weatherforecast/
+# Accept: application/json
